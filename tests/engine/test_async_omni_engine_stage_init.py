@@ -519,6 +519,7 @@ def test_initialize_local_llm_replica_passes_stage_init_timeout_to_complete_stag
     fake_vllm_config = types.SimpleNamespace()
     fake_addresses = types.SimpleNamespace(inputs=["in"], outputs=["out"], frontend_stats_publish_address=None)
     captured_timeout: int | None = None
+    captured_lock_devices: str | None = None
 
     plan = ReplicaInitPlan(
         replica_id=0,
@@ -539,7 +540,9 @@ def test_initialize_local_llm_replica_passes_stage_init_timeout_to_complete_stag
 
     def _capture_acquire_device_locks(*_args):
         nonlocal captured_timeout
+        nonlocal captured_lock_devices
         captured_timeout = _args[2]
+        captured_lock_devices = _args[1].get("_stage_physical_devices")
         return []
 
     monkeypatch.setattr(runtime_mod, "acquire_device_locks", _capture_acquire_device_locks)
@@ -569,6 +572,8 @@ def test_initialize_local_llm_replica_passes_stage_init_timeout_to_complete_stag
             os.environ[device_env_var] = prev_device_env
 
     assert captured_timeout == 302
+    assert captured_lock_devices == "0"
+    assert "_stage_physical_devices" not in plan.engine_args_dict
 
 
 def test_build_engine_args_cli_tokenizer_overrides_inferred_base_tokenizer(tmp_path):
