@@ -925,9 +925,12 @@ def acquire_device_locks(
             * cfg_parallel_size
         )
 
-        # Get physical device IDs
+        # Get physical device IDs. StageRuntime passes resolved stage devices
+        # here to avoid holding the spawn env lock while waiting on device locks.
         device_control_env = current_omni_platform.device_control_env_var
-        visible_devices_str = os.environ.get(device_control_env)
+        visible_devices_str = engine_args_dict.get("_stage_physical_devices")
+        if visible_devices_str is None:
+            visible_devices_str = os.environ.get(device_control_env)
         physical_devices: list[int] = []
 
         if visible_devices_str:

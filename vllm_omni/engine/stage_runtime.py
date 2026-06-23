@@ -553,12 +553,15 @@ class StageRuntime:
                 raise RuntimeError(f"LLM stage {plan.metadata.stage_id} is missing executor_class")
             if plan.engine_args_dict is None:
                 raise RuntimeError(f"LLM stage {plan.metadata.stage_id} is missing engine args")
-            with self._scoped_spawn_device_env(physical_devices):
-                lock_fds = acquire_device_locks(
-                    plan.metadata.stage_id,
-                    plan.engine_args_dict,
-                    stage_init_timeout,
-                )
+            engine_args_for_locks = plan.engine_args_dict
+            if physical_devices is not None:
+                engine_args_for_locks = dict(plan.engine_args_dict)
+                engine_args_for_locks["_stage_physical_devices"] = physical_devices
+            lock_fds = acquire_device_locks(
+                plan.metadata.stage_id,
+                engine_args_for_locks,
+                stage_init_timeout,
+            )
             with launch_stage_replica(
                 vllm_config=vllm_config,
                 executor_class=executor_class,
